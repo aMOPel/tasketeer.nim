@@ -65,3 +65,10 @@ A filter can be:
   `description`/`tags` is implemented using the `AND` operator, since it makes
   sense, if you specify both, you probably want a task fitting the `status` and
   the text.
+
+## Pictures
+
+![1](./docs/pics/1.png)
+![2](./docs/pics/2.png)
+![3](./docs/pics/3.png)
+![4](./docs/pics/4.png)
