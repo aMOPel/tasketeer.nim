@@ -4,6 +4,10 @@
 
 Currently the paths are relative, so you have to navigate to the project root.
 
+Install dependencies.
+
+`nimble install`
+
 Compile `src/tasketeer.nim`.
 
 `nim c ./src/tasketeer.nim`
@@ -14,13 +18,36 @@ Run it:
 
 `./build/tasketeer`
 
-It should spit out a help message for the CLI usage.
+It should spit out a help message for the CLI usage (since running it without a
+subcommand is invalid usage).
+
 Quote:
 >  --help-syntax or --helps gives general cligen syntax help.
 
 >  Run "{help SUBCMD|SUBCMD --help}" to see help for just SUBCMD.
 
 Also it should create a `task.db` file in the project root, which is a SQLite DB.
+
+Then you can run any subcommand like
+
+`./build/tasketeer add <description> <tags>`
+
+and
+
+`./build/tasketeer list`
+
+## Config
+
+Currently the `config.json` file is responsible for the configuration data.
+Just because JSON is very easy to work with in nim.
+This could be changed to YAML, TOML or INI (or maybe even nimscript) in the future.
+
+The `config.json` is currently in the project root and kinda static since there
+aren't really any options worth changing.
+
+Later there shall be a feature to look up default locations for config files
+(like `XDG_CONFIG_HOME` etc.) and a default location for the `task.db` file and
+all that, but ATM it's all kept in the project root.
 
 ## Subcommands
 
