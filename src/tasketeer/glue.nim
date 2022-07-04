@@ -1,11 +1,13 @@
-import print
+# import print
 import backend/backendInterface
-import backend/sqlite
-import backend/test as btest
+# import backend/sqlite
+# import backend/test as btest
 import frontend/frontendInterface
-import frontend/cli/cliImpl
-import frontend/test as ftest
+# import frontend/cli/cliImpl
+# import frontend/test as ftest
 
+import globals
+import std / [options]
 import config
 
 let
@@ -37,7 +39,7 @@ proc showFilteredTasks*(filter: Filter): int =
   else:
     1
 
-proc deleteTasks(filter: Filter): int =
+proc deleteTasks*(filter: Filter): int =
   var tasks = backend.get(filter)
   if tasks.isSome:
     result = 0
@@ -47,7 +49,7 @@ proc deleteTasks(filter: Filter): int =
   else:
     result = 1
 
-proc modifyTasks(filter: Filter, modifiedTask: ModifiedTask): int =
+proc modifyTasks*(filter: Filter, modifiedTask: ModifiedTask): int =
   var tasks = backend.get(filter)
   if tasks.isSome:
     result = 0

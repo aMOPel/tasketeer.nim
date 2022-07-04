@@ -3,7 +3,7 @@ import ../../globals
 
 import cligen
 
-include "../../glue.nim"
+import ../../glue
 
 proc add*(descAndTags: seq[string]): int =
   ## adds new task. Usage: task add <description> [<tag> ...]
@@ -174,7 +174,8 @@ proc ctags*(filter: seq[string], newValue: seq[string]): int =
   else:
     1
 
-method init*(frontend: CliFrontend): int =
+import ../frontendInterface
+initProc = proc (): int =
   # import cligen/argcvt
   # proc argParse[T](dst: var Option[T], dfl: Option[T],
   #                  a: var ArgcvtParams): bool =

@@ -1,20 +1,13 @@
-import std / [options, logging, with, strutils, strformat]
+import std / [logging, with, strutils, strformat]
 
 import norm / [sqlite]
 import print
 
-import ../globals
 import ../config
 
 addHandler newConsoleLogger(fmtStr = "")
 
 var dbConn*: DbConn
-
-try:
-  dbConn = open(conf.dbPath.get, "", "", "")
-  dbConn.createTables(newTask())
-except DbError as e:
-  print e.msg
 
 method add*(backend: SqliteBackend, t: var Task): int =
   with dbConn:
@@ -90,19 +83,28 @@ method get*(backend: SqliteBackend, filter: Filter): Option[Tasks] =
   except NotFoundError:
     return none Tasks
 
-when isMainModule:
-  var
-    test = newTask(some "testtask")
-    # selection = newTask()
-  var selection = get(Filter())
-  # with dbConn:
-  #   # insert test
-  #   select selection, "Task.description LIKE ?", "test%"
-  discard modify(selection.get()[0], ModifiedTask(status: some Done,
-      description: some none string))
-  print get(Filter())
-  # with dbConn:
-  #   # insert test
-  #   select selection, "Task.description LIKE ?", "test%"
-  # print selection
-  # print test
+method init*(backend: SqliteBackend): int =
+  try:
+    dbConn = open(conf.dbPath.get, "", "", "")
+    dbConn.createTables(newTask())
+    return 0
+  except DbError as e:
+    print e.msg
+    return 1
+
+# when isMainModule:
+#   var
+#     test = newTask(some "testtask")
+#     # selection = newTask()
+#   var selection = get(Filter())
+#   # with dbConn:
+#   #   # insert test
+#   #   select selection, "Task.description LIKE ?", "test%"
+#   discard modify(selection.get()[0], ModifiedTask(status: some Done,
+#       description: some none string))
+#   print get(Filter())
+#   # with dbConn:
+#   #   # insert test
+#   #   select selection, "Task.description LIKE ?", "test%"
+#   # print selection
+#   # print test
