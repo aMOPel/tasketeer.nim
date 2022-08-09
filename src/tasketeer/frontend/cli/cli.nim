@@ -1,21 +1,41 @@
 import std / [options, strutils]
-import ../../globals
 
+import nancy
+import termstyle
 import cligen
 
-import ../../glue
+import ../../globals
+import dataProvider
 
-proc add*(descAndTags: seq[string]): int =
+proc showTasks(tasks: Option[Tasks]): int =
+  if tasks.isNone:
+    echo "no tasks found"
+  var table: TerminalTable
+  table.add ""
+  table.add(
+    bold red "id:",
+    bold blue "description:",
+    bold green "tags:",
+    bold yellow "status:"
+  )
+  table.add ""
+  for task in tasks.get:
+    table.add $task.id, task.description.get(""), task.tags.get(""),
+        $TaskStatus(task.status)
+  table.add ""
+  table.echoTable(80, 2)
+
+proc add(descAndTags: seq[string]): int =
   ## adds new task. Usage: task add <description> [<tag> ...]
   var task = newTask(some descAndTags[0], some descAndTags[
       1..<descAndTags.len].join(","))
   result = addTask(task)
 
-proc new*(descAndTags: seq[string]): int =
+proc new(descAndTags: seq[string]): int =
   ## like `add`
   add(descAndTags)
 
-proc remove*(filter: seq[string]): int =
+proc remove(filter: seq[string]): int =
   ## removes tasks according to filter
   if filter.len == 0:
     1
@@ -42,38 +62,38 @@ proc remove*(filter: seq[string]): int =
   else:
     1
 
-proc delete*(filter: seq[string]): int =
+proc delete(filter: seq[string]): int =
   ## like `remove`
   remove(filter)
 
-proc list*(filter: seq[string]): int =
+proc list(filter: seq[string]): int =
   ## lists tasks according to filter
   if filter.len == 0:
-    showAllTasks()
+    showTasks(getAllTasks())
   elif filter.len == 1:
     let s = filter[0]
     try:
       let id = s.parseInt
-      showFilteredTasks(Filter(id: some id))
+      showTasks(getFilteredTasks(Filter(id: some id)))
     except ValueError:
       try:
         let status = parseEnum[TaskStatus](s).int
-        showFilteredTasks(Filter(status: some status))
+        showTasks(getFilteredTasks(Filter(status: some status)))
       except ValueError:
-        showFilteredTasks(Filter(description: some s, tags: some s))
+        showTasks(getFilteredTasks(Filter(description: some s, tags: some s)))
   elif filter.len == 2:
     let s = filter[0]
     let t = filter[1]
     try:
       let status = parseEnum[TaskStatus](s).int
-      showFilteredTasks(Filter(description: some t, tags: some t,
-          status: some status))
+      showTasks(getFilteredTasks(Filter(description: some t, tags: some t,
+          status: some status)))
     except ValueError:
-      showFilteredTasks(Filter(description: some s, tags: some s))
+      showTasks(getFilteredTasks(Filter(description: some s, tags: some s)))
   else:
     1
 
-proc cstatus*(filter: seq[string], newValue: TaskStatus): int =
+proc cstatus(filter: seq[string], newValue: TaskStatus): int =
   ## change status of filtered tasks
   if filter.len == 0:
     1
@@ -103,7 +123,7 @@ proc cstatus*(filter: seq[string], newValue: TaskStatus): int =
   else:
     1
 
-proc cdescription*(filter: seq[string], newValue: string): int =
+proc cdescription(filter: seq[string], newValue: string): int =
   ## change description of filtered tasks
 
   let nv = some newValue
@@ -138,7 +158,7 @@ proc cdescription*(filter: seq[string], newValue: string): int =
   else:
     1
 
-proc ctags*(filter: seq[string], newValue: seq[string]): int =
+proc ctags(filter: seq[string], newValue: seq[string]): int =
   ## change tags of filtered tasks
 
   let nv = if newValue.len == 0:
@@ -174,8 +194,7 @@ proc ctags*(filter: seq[string], newValue: seq[string]): int =
   else:
     1
 
-import ../frontendInterface
-initProc = proc (): int =
+proc init =
   # import cligen/argcvt
   # proc argParse[T](dst: var Option[T], dfl: Option[T],
   #                  a: var ArgcvtParams): bool =
@@ -187,5 +206,18 @@ initProc = proc (): int =
   # proc argHelp[T](dfl: Option[T], a: var ArgcvtParams): seq[string] =
   #   @[a.argKeys, $T, (if dfl.isSome: $dfl.get else: "NONE")]
 
-  dispatchMulti([list], [cliCommands.add], [cliCommands.new], [
-      cliCommands.remove], [cliCommands.delete], [cstatus], [cdescription], [ctags])
+  dispatchMulti(
+    [list],
+    [cli.add],
+    [cli.new],
+    [cli.remove],
+    [cli.delete],
+    [cstatus],
+    [cdescription],
+    [ctags]
+  )
+
+when isMainModule:
+  import ../../backend/backendInterface
+  discard backendInterface.init(conf)
+  init()

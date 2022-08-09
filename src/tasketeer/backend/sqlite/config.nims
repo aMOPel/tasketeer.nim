@@ -1,0 +1,2 @@
+--app:lib
+--define:normDebug

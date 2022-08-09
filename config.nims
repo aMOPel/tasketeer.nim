@@ -12,3 +12,4 @@
 --checks:on
 --assertions:on
 # --profiler:on
+--define:nimDebugDlOpen

@@ -1,17 +1,42 @@
 import ../globals
-import std / [options]
+import std / [options, strformat]
+import jsony
 
-method add*(backend: BackendImpl, t: var Task): int {.base.} =
-  raise newException(CatchableError, "Method without implementation override")
-method delete*(backend: BackendImpl, t: var Task): int {.base.} =
-  raise newException(CatchableError, "Method without implementation override")
-method modify*(backend: BackendImpl, task: var Task,
-    modifiedTask: ModifiedTask): int {.base.} =
-  raise newException(CatchableError, "Method without implementation override")
-method get*(backend: BackendImpl, filter: Filter): Option[Tasks] {.base.} =
-  raise newException(CatchableError, "Method without implementation override")
-method init*(backend: BackendImpl): int {.base.} =
-  raise newException(CatchableError, "Method without implementation override")
+var cache: string
 
-include "./sqlite.nim"
-include "./test.nim"
+proc dllName(): string =
+  ## get the name of the dynamic lib file for the backend
+  try:
+    if cache == "":
+      let configString = readFile("config.json")
+      var tempconfig = configString.fromJson(Config)
+      globals.conf = tempconfig
+      cache = tempconfig.backend
+    result = &"./build/lib{cache}.so"
+  except IOError:
+    echo "config file not found"
+
+proc add*(t: var Task): int
+  {.cdecl, importc, dynlib: dllName().}
+  ## implement this  in a dynamic lib
+proc delete*(t: var Task): int
+  {.cdecl, importc, dynlib: dllName().}
+  ## implement this  in a dynamic lib
+proc modify*(task: var Task, modifiedTask: ModifiedTask): int
+  {.cdecl, importc, dynlib: dllName().}
+  ## implement this  in a dynamic lib
+proc get*(filter: Filter): Option[Tasks]
+  {.cdecl, importc, dynlib: dllName().}
+  ## implement this  in a dynamic lib
+proc init*(config: Config): int
+  {.cdecl, importc, dynlib: dllName().}
+  ## implement this  in a dynamic lib
+
+# when isMainModule:
+#   import print
+#   discard init(conf)
+#   var f = Filter()
+#   var r = get(f)
+#   if r.isSome:
+#     for t in r.get:
+#       print t

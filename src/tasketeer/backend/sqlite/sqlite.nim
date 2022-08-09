@@ -1,24 +1,23 @@
-import std / [logging, with, strutils, strformat]
+import std / [logging, with, strutils, strformat, options]
 
 import norm / [sqlite]
+import ../../globals
 import print
-
-import ../config
 
 addHandler newConsoleLogger(fmtStr = "")
 
-var dbConn*: DbConn
+var dbConn: DbConn
 
-method add*(backend: SqliteBackend, t: var Task): int =
+proc add(t: var Task): int {.cdecl, exportc, dynlib.} =
   with dbConn:
     insert t
 
-method delete*(backend: SqliteBackend, t: var Task): int =
+proc delete(t: var Task): int {.cdecl, exportc, dynlib.} =
   with dbConn:
     delete t
 
-method modify*(backend: SqliteBackend, task: var Task,
-    modifiedTask: ModifiedTask): int =
+proc modify(task: var Task,
+    modifiedTask: ModifiedTask): int {.cdecl, exportc, dynlib.} =
   var modified = false
   if modifiedTask.description.isSome:
     task.description = modifiedTask.description.get
@@ -33,7 +32,7 @@ method modify*(backend: SqliteBackend, task: var Task,
     with dbConn:
       update task
 
-method get*(backend: SqliteBackend, filter: Filter): Option[Tasks] =
+proc get(filter: Filter): Option[Tasks] {.cdecl, exportc, dynlib.} =
   var queries: tuple[description: string, tags: string, status: string, id: string]
   var values: seq[DbValue]
   if filter.id.isSome:
@@ -83,28 +82,11 @@ method get*(backend: SqliteBackend, filter: Filter): Option[Tasks] =
   except NotFoundError:
     return none Tasks
 
-method init*(backend: SqliteBackend): int =
+proc init(config: Config): int {.cdecl, exportc, dynlib.} =
   try:
-    dbConn = open(conf.dbPath.get, "", "", "")
+    dbConn = open(config.dbPath.get, "", "", "")
     dbConn.createTables(newTask())
     return 0
   except DbError as e:
     print e.msg
     return 1
-
-# when isMainModule:
-#   var
-#     test = newTask(some "testtask")
-#     # selection = newTask()
-#   var selection = get(Filter())
-#   # with dbConn:
-#   #   # insert test
-#   #   select selection, "Task.description LIKE ?", "test%"
-#   discard modify(selection.get()[0], ModifiedTask(status: some Done,
-#       description: some none string))
-#   print get(Filter())
-#   # with dbConn:
-#   #   # insert test
-#   #   select selection, "Task.description LIKE ?", "test%"
-#   # print selection
-#   # print test

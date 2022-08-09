@@ -1,5 +1,4 @@
 {
-  "backend": "Sqlite",
-  "frontend": "Cli",
+  "backend": "sqlite",
   "dbPath": "./task.db"
 }
