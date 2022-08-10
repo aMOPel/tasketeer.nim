@@ -1,57 +1,110 @@
-import std / [logging, with, strutils, strformat, options]
+import std / [logging, with, strformat, strutils, options, macros]
 
+import results
 import norm / [sqlite]
+import norm / [model]
 import ../../globals
 import print
 
 addHandler newConsoleLogger(fmtStr = "")
 
-var dbConn: DbConn
+type
+  DbTask = ref object of Model
+    description: string
+    tags: Option[string]
+    status: TaskStatus
 
-proc add(t: var Task): int {.cdecl, exportc, dynlib.} =
-  with dbConn:
-    insert t
+var
+  dbConn: DbConn
 
-proc delete(t: var Task): int {.cdecl, exportc, dynlib.} =
-  with dbConn:
-    delete t
+proc newDbTask(description: string, tags = none string,
+    status = Todo): DbTask =
+  DbTask(description: description, tags: tags, status: status)
 
-proc modify(task: var Task,
-    modifiedTask: ModifiedTask): int {.cdecl, exportc, dynlib.} =
-  var modified = false
-  if modifiedTask.description.isSome:
-    task.description = modifiedTask.description.get
-    modified = true
-  if modifiedTask.tags.isSome:
-    task.tags = modifiedTask.tags.get
-    modified = true
-  if modifiedTask.status.isSome:
-    task.status = int(modifiedTask.status.get)
-    modified = true
-  if modified:
-    with dbConn:
-      update task
+proc fromTuple(t: Task): DbTask =
+  if t.id == 0:
+    DbTask(description: t.description, tags: some t.tags.join(","), status: t.status)
+  else:
+    DbTask(description: t.description, tags: some t.tags.join(","), status: t.status, id: t.id)
+proc toTuple(t: DbTask): Task =
+  let tagsStr = t.tags.get("")
+  (description: t.description,
+  tags: if tagsStr == "": @[] else: tagsStr.split(','), status: t.status, id: t.id)
 
-proc get(filter: Filter): Option[Tasks] {.cdecl, exportc, dynlib.} =
+proc toTuples(ts: seq[DbTask]): Tasks =
+  for t in ts:
+    result.add t.toTuple
+
+func dbType*(T: typedesc[enum]): string = "STRING"
+func dbValue*(val: enum): DbValue = DbValue(kind: dvkString, s: $val)
+func to*(dbVal: DbValue, T: typedesc[enum]): T = parseEnum[T](dbVal.s)
+
+macro `[]=`(o: untyped; k: static[string]; v: untyped) =
+  let i = k.ident
+  quote do:
+    `o`.`i` = `v`
+
+proc override(task: var Task, updatedTask: UpdatedTask): bool =
+  for k, v in fieldPairs(updatedTask):
+    if v.isSome:
+      task[k] = v.get
+      result = true
+
+# ===============================================================================
+# export as dynlib
+
+proc add(t: Task): R {.cdecl, exportc, dynlib.} =
+  var dbTask = t.fromTuple
+  try:
+    dbConn.transaction:
+      dbConn.insert dbTask
+    result.ok @[dbTask.toTuple]
+  except DbError as e:
+    result.err e.msg
+
+proc delete(t: Task): R {.cdecl, exportc, dynlib.} =
+  var dbTask = t.fromTuple
+  try:
+    dbConn.transaction:
+      dbConn.delete dbTask
+    # return deleted Task
+    result.ok @[t]
+  except DbError as e:
+    result.err e.msg
+
+proc update(t: Task,
+    updatedTask: UpdatedTask): R {.cdecl, exportc, dynlib.} =
+  var task = t
+  var updated = override(task, updatedTask)
+  if updated:
+    var dbTask = task.fromTuple
+    try:
+      dbConn.transaction:
+        dbConn.update dbTask
+      result.ok @[dbTask.toTuple]
+    except DbError as e:
+      result.err e.msg
+
+proc query(filter: Filter): R {.cdecl, exportc, dynlib.} =
+
   var queries: tuple[description: string, tags: string, status: string, id: string]
   var values: seq[DbValue]
   if filter.id.isSome:
-    queries.id = "Task.id = ?"
+    queries.id = "DbTask.id = ?"
     values.add dbValue(filter.id.get)
   else:
     if filter.description.isSome:
-      queries.description = "Task.description LIKE ?"
+      queries.description = "DbTask.description LIKE ?"
       values.add dbValue(&"%{filter.description.get}%")
     if filter.tags.isSome:
-      queries.tags = "Task.tags LIKE ?"
+      queries.tags = "DbTask.tags LIKE ?"
       values.add dbValue(&"%{filter.tags.get}%")
     if filter.status.isSome:
-      queries.status = "Task.status = ?"
-      values.add dbValue(filter.status.get)
-
+      queries.status = "DbTask.status = ?"
+      values.add dbValue($filter.status.get)
 
   try:
-    var selection = @[newTask()]
+    var selection = @[newDbTask("")]
     if values.len == 0:
       with dbConn:
         selectAll(selection)
@@ -73,20 +126,24 @@ proc get(filter: Filter): Option[Tasks] {.cdecl, exportc, dynlib.} =
       else:
         query &= queries.status
 
-      # print queries
-      # print query
-      # print values
       with dbConn:
         select(selection, query, values)
-    return some selection
-  except NotFoundError:
-    return none Tasks
+    result.ok selection.toTuples
+  except NotFoundError as e:
+    result.err e.msg
 
-proc init(config: Config): int {.cdecl, exportc, dynlib.} =
+proc init(config: Config): R {.cdecl, exportc, dynlib.} =
+  if config.dbPath.isNone:
+    result.err "dbPath not specified in config"
+    return
+  if config.dbPath.get == "":
+    result.err "dbPath empty in config"
+    return
+
   try:
     dbConn = open(config.dbPath.get, "", "", "")
-    dbConn.createTables(newTask())
-    return 0
+    dbConn.createTables(newDbTask(""))
+    result.ok @[]
   except DbError as e:
-    print e.msg
-    return 1
+    result.err e.msg
+

@@ -1,6 +1,6 @@
 import std/[options]
 
-import norm / [model]
+import results
 
 type
   TaskStatus* {.pure.} = enum
@@ -8,32 +8,37 @@ type
     Doing = "doing"
     Done = "done"
 
-  Task* = ref object of Model
-    description*: Option[string]
-    tags*: Option[string]
-    status*: int
+  Task* = tuple
+    description: string
+    tags: seq[string]
+    status: TaskStatus
+    id: int64
 
-  ModifiedTask* = ref object of Model
-    description*: Option[Option[string]]
-    tags*: Option[Option[string]]
-    status*: Option[TaskStatus]
+  UpdatedTask* = tuple
+    description: Option[string]
+    tags: Option[seq[string]]
+    status: Option[TaskStatus]
 
   Tasks* = seq[Task]
 
-  Filter* = ref object
+  Filter* = object
     description*: Option[string]
     tags*: Option[string]
-    status*: Option[int]
-    id*: Option[int]
+    status*: Option[TaskStatus]
+    id*: Option[int64]
 
   Config* = ref object
     backend*: string
     dbPath*: Option[string]
 
+  R* = Result[Tasks, string]
 
-proc newTask*(description = none string, tags = none string,
+proc newTask*(description: string, tags: seq[string] = @[],
     status = Todo): Task =
-  Task(description: description, tags: tags, status: int(status))
+  (description: description, tags: tags, status: status, id: 0i64)
+proc newUpdatedTask*(description = none string, tags = none seq[string],
+    status = none TaskStatus): UpdatedTask =
+  (description: description, tags: tags, status: status)
 
 var
   conf*: Config

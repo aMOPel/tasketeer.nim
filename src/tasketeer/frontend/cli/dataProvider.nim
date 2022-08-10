@@ -1,33 +1,26 @@
 import ../../backend/backendInterface
 import ../../globals
-import std / [options]
+import results
 
-proc getAllTasks*(): Option[Tasks] =
-  backendInterface.get(Filter())
+proc getAllTasks*(): R =
+  backendInterface.query(Filter())
 
-proc getFilteredTasks*(filter: Filter): Option[Tasks] =
-  backendInterface.get(filter)
+proc getFilteredTasks*(filter: Filter): R =
+  backendInterface.query(filter)
 
-proc addTask*(task: var Task): int =
+proc addTask*(task: Task): R =
   backendInterface.add(task)
 
-proc deleteTasks*(filter: Filter): int =
-  var tasks = backendInterface.get(filter)
-  if tasks.isSome:
-    result = 0
-    for i in 0..<tasks.get.len:
-      result = backendInterface.delete(tasks.get()[i])
-      if result == 1: return
-  else:
-    result = 1
+proc deleteTasks*(filter: Filter): R =
+  var results = ?backendInterface.query(filter)
+  for i in 0..<results.len:
+    discard ?backendInterface.delete(results[i])
+  result.ok results
 
-proc modifyTasks*(filter: Filter, modifiedTask: ModifiedTask): int =
-  var tasks = backendInterface.get(filter)
-  if tasks.isSome:
-    result = 0
-    for i in 0..<tasks.get.len:
-      result = backendInterface.modify(tasks.get()[i], modifiedTask)
-      if result == 1: return
-  else:
-    result = 1
+proc updateTasks*(filter: Filter, updatedTask: UpdatedTask): R =
+  var queryResults = ?backendInterface.query(filter)
+  var updatedResults: Tasks
+  for i in 0..<queryResults.len:
+    updatedResults.add ?backendInterface.update(queryResults[i], updatedTask)
+  result.ok updatedResults
 

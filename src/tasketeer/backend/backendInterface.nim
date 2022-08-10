@@ -1,5 +1,5 @@
 import ../globals
-import std / [options, strformat]
+import std / [strformat]
 import jsony
 
 var cache: string
@@ -16,19 +16,19 @@ proc dllName(): string =
   except IOError:
     echo "config file not found"
 
-proc add*(t: var Task): int
+proc add*(t: Task): R
   {.cdecl, importc, dynlib: dllName().}
   ## implement this  in a dynamic lib
-proc delete*(t: var Task): int
+proc delete*(t: Task): R
   {.cdecl, importc, dynlib: dllName().}
   ## implement this  in a dynamic lib
-proc modify*(task: var Task, modifiedTask: ModifiedTask): int
+proc update*(task: Task, updatedTask: UpdatedTask): R
   {.cdecl, importc, dynlib: dllName().}
   ## implement this  in a dynamic lib
-proc get*(filter: Filter): Option[Tasks]
+proc query*(filter: Filter): R
   {.cdecl, importc, dynlib: dllName().}
   ## implement this  in a dynamic lib
-proc init*(config: Config): int
+proc init*(config: Config): R
   {.cdecl, importc, dynlib: dllName().}
   ## implement this  in a dynamic lib
 
