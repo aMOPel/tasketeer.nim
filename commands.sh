@@ -1,1 +1,1 @@
-help2man -N tasketeer > ./man/man1/test.1
+help2man -N ./build/cli > ./man/man1/test.1

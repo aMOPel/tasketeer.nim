@@ -6,7 +6,7 @@ import norm / [model]
 import ../../globals
 import print
 
-addHandler newConsoleLogger(fmtStr = "")
+# addHandler newConsoleLogger(fmtStr = "")
 
 type
   DbTask = ref object of Model

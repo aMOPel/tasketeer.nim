@@ -1,5 +1,18 @@
 # Tasketeer.nim
 
+Tasketeer is a task app, inspired by taskwarrior, using a modular approach to frontend and
+backend.
+
+The backend is a dynamic library implementing the backend interface. This library
+is picked up at runtime using the the `config.json` to pick.
+
+*(currently there is only a sqlite backend)*
+
+The frontend uses the backend interface to manage the data and is concerned
+with displaying the data and gathering user inputs.
+
+*(currently there is only a cli frontend)*
+
 ## Usage
 
 Currently the paths are relative, so you have to navigate to the project root.
@@ -8,33 +21,51 @@ Install dependencies.
 
 `nimble install`
 
-Compile `src/tasketeer.nim`.
+Compile sqlite backend.
 
-`nim c ./src/tasketeer.nim`
+`nim c ./src/backend/sqlite/sqlite.nim`
 
-It should compile to `build/tasketeer` (using the args from `config.nims`).
+Compile cli frontend.
+
+`nim c ./src/frontend/cli/cli.nim`
+
+It should compile to `build/cli` (using the args from `config.nims`).
 
 Run it:
 
-`./build/tasketeer`
+`./build/cli`
 
 It should spit out a help message for the CLI usage (since running it without a
 subcommand is invalid usage).
 
-Quote:
->  --help-syntax or --helps gives general cligen syntax help.
+```
+Usage:
+  cli {SUBCMD}  [sub-command options & parameters]
+where {SUBCMD} is one of:
+  help    print comprehensive or per-cmd help
+  list    lists tasks according to filter
+  add     adds new task. Usage: task add <description> [<tag> ...]
+  new     like `add`
+  remove  removes tasks according to filter
+  delete  like `remove`
+  modify  change fields of filtered tasks
+  update  like modify
 
->  Run "{help SUBCMD|SUBCMD --help}" to see help for just SUBCMD.
+cli {-h|--help} or with no args at all prints this message.
+cli --help-syntax gives general cligen syntax help.
+Run "cli {help SUBCMD|SUBCMD --help}" to see help for just SUBCMD.
+Run "cli help" to get *comprehensive* help.
+```
 
 Also it should create a `task.db` file in the project root, which is a SQLite DB.
 
 Then you can run any subcommand like
 
-`./build/tasketeer add <description> <tags>`
+`./build/cli add <description> <tags>`
 
 and
 
-`./build/tasketeer list`
+`./build/cli list`
 
 ## Config
 
@@ -71,4 +102,3 @@ A filter can be:
 ![1](./docs/pics/1.png)
 ![2](./docs/pics/2.png)
 ![3](./docs/pics/3.png)
-![4](./docs/pics/4.png)
